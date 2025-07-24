@@ -58,7 +58,10 @@ async function start () {
   server.close()
   await once(server, 'close')
   await writeFile(join(__dirname, 'model.js'), testingModel())
-  const sp = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'], { env: { ...process.env, PORT: port }, stdio: ['ignore', 'ignore', 'inherit'] })
+  const sp = spawn('cmd', ['/c', 'npm start'], {
+    env: { ...process.env, PORT: port },
+    stdio: 'inherit'
+  })
 
   try {
     await validate({ port })

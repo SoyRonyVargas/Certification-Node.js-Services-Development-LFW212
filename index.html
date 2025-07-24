@@ -1,11 +1,1579 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>我的网页</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Reglas - Sistema ULTRAMAR</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2a4365, #4a6491);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin-bottom: 20px;
+            border: 3px solid #4a6491;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #ffa726, #4CAF50);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #1a2a6c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #4a6491;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 2px solid #e0e5ec;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+        }
+
+        .card h2 {
+            color: #1a2a6c;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 3px solid #4a6491;
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .json-upload {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #4a6491;
+            border-radius: 10px;
+            text-align: center;
+            background: rgba(74, 100, 145, 0.05);
+        }
+
+        .json-upload p {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #1a2a6c;
+        }
+
+        .json-upload input[type="file"] {
+            margin: 10px auto;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: block;
+            width: 80%;
+            max-width: 400px;
+            background: white;
+        }
+
+        .json-upload button {
+            background: linear-gradient(135deg, #4a6491, #1a2a6c);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .json-upload button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(26, 42, 108, 0.4);
+        }
+
+        .json-upload button:active {
+            transform: translateY(0);
+        }
+
+        .rules-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .rules-table th,
+        .rules-table td {
+            border: 1px solid #ddd;
+            padding: 14px;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+
+        .rules-table th {
+            background: linear-gradient(135deg, #4a6491, #1a2a6c);
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .rules-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .rules-table tr:hover {
+            background-color: #e3f2fd;
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .day-column {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 450px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .day-header {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #1a2a6c;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #4a6491;
+            padding-bottom: 12px;
+        }
+
+        .time-slot {
+            background: white;
+            margin-bottom: 12px;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #4a6491;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .time-slot:hover {
+            transform: scale(1.02);
+        }
+
+        .time-slot.multiple-users {
+            border-left-color: #ff6b6b;
+        }
+
+        .time-slot.crosses-midnight {
+            border-left-color: #ffa726;
+        }
+
+        .time-slot.ia-active {
+            border-left-color: #4CAF50;
+            background: #e8f5e9;
+        }
+
+        .time-slot.complex-rule {
+            border-left-color: #9C27B0;
+            background: #f3e5f5;
+        }
+
+        .slot-time {
+            font-weight: bold;
+            color: #1a2a6c;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .slot-description {
+            color: #333;
+            font-size: 0.95rem;
+            margin: 8px 0;
+            font-weight: 500;
+        }
+
+        .slot-users {
+            color: #2e7d32;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .slot-channel {
+            color: #9C27B0;
+            font-size: 0.85rem;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .slot-ia {
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .slot-warning {
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 8px;
+            padding: 8px;
+            background: #ffebee;
+            border-radius: 6px;
+        }
+
+        .warning-icon {
+            color: #d32f2f;
+            font-size: 1.2rem;
+            margin-right: 5px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #4a6491, #1a2a6c);
+            color: white;
+            padding: 25px 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-card.ia-card {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+        }
+        
+        .stat-card.complex-card {
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+        }
+
+        .stat-card.warning-card {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+        }
+
+        .stat-number {
+            font-size: 2.4rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 320px;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .success-message {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #2e7d32;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .warning-message {
+            background: #fff3e0;
+            color: #FF9800;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #FF9800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Estilos para la matriz de turnos */
+        .time-matrix {
+            display: grid;
+            grid-template-columns: 100px repeat(7, 1fr);
+            gap: 2px;
+            margin-top: 20px;
+            background: #e0e5ec;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .matrix-header {
+            background: #1a2a6c;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .matrix-cell {
+            background: white;
+            padding: 15px 10px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .matrix-time {
+            background: #4a6491;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .matrix-rule {
+            background: #e3f2fd;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.85rem;
+            border-left: 3px solid #4a6491;
+        }
+
+        .matrix-rule.ia-rule {
+            background: #e8f5e9;
+            border-left: 3px solid #4CAF50;
+        }
+        
+        .matrix-rule.complex-rule {
+            background: #f3e5f5;
+            border-left: 3px solid #9C27B0;
+        }
+
+        .matrix-rule .rule-time {
+            font-weight: bold;
+            color: #1a2a6c;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .matrix-rule .rule-users {
+            color: #2e7d32;
+            font-size: 0.8rem;
+        }
+
+        .matrix-rule .rule-ia {
+            color: #4CAF50;
+            font-weight: bold;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .matrix-rule .rule-warning {
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .matrix-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #777;
+            font-style: italic;
+            height: 100%;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            background: #e0e5ec;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-btn.active {
+            background: #4a6491;
+            color: white;
+        }
+        
+        .filter-btn:hover {
+            background: #d0d5e0;
+        }
+        
+        .filter-btn.active:hover {
+            background: #3a5471;
+        }
+        
+        .conflict-highlight {
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+            }
+        }
+        
+        .complex-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #9C27B0;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .schedule-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .time-matrix {
+                overflow-x: auto;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .schedule-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .card {
+                grid-column: 1 / -1 !important;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .schedule-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .header p {
+                font-size: 1.1rem;
+            }
+            
+            .time-matrix {
+                display: none; /* Ocultar matriz en móviles por espacio */
+            }
+            
+            .matrix-mobile-notice {
+                display: block;
+                text-align: center;
+                padding: 15px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                margin-top: 15px;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>欢迎来到我的网页</h1>
-    <p>这是一个用中文写的简单网页示例。</p>
+    <div class="dashboard">
+        <div class="header">
+            <h1><i class="fas fa-calendar-alt"></i> Dashboard de Reglas del Sistema</h1>
+            <p>Visualización completa de reglas, turnos y asistencia IA - Sistema ULTRAMAR</p>
+        </div>
+        <!-- Carga de JSON -->
+        <div class="card full-width">
+            <h2><i class="fas fa-file-upload"></i> Cargar Configuración JSON</h2>
+            <div class="json-upload">
+                <p>Selecciona el archivo JSON con las reglas de tu sistema:</p>
+                <input type="file" id="jsonFile" accept=".json" />
+                <button onclick="loadJsonFile()"><i class="fas fa-upload"></i> Cargar Reglas</button>
+                <button onclick="loadSampleData()"><i class="fas fa-database"></i> Usar Datos de Ejemplo</button>
+            </div>
+            <div id="loadStatus"></div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="card" style="grid-column: span 4;">
+            <h2><i class="fas fa-chart-bar"></i> Estadísticas del Sistema</h2>
+            <div class="stats-grid" id="statsGrid">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+
+        <!-- Gráfico de Distribución -->
+        <div class="card" style="grid-column: span 8;">
+            <h2><i class="fas fa-chart-pie"></i> Distribución de Reglas por Canal</h2>
+            <div class="chart-container">
+                <canvas id="channelChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Estado Asistente IA -->
+        <div class="card full-width">
+            <h2><i class="fas fa-robot"></i> Estado del Asistente IA</h2>
+            <div id="iaStatusContainer" style="margin-top: 20px; padding: 20px; background: #e8f5e9; border-radius: 10px;">
+                <div id="iaStatusContent">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Matriz de Turnos -->
+        <div class="card full-width">
+            <h2><i class="fas fa-table"></i> Matriz de Turnos por Día y Hora</h2>
+            <div id="timeMatrixContainer">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div id="matrixNotice" class="matrix-mobile-notice" style="display: none;">
+                <i class="fas fa-info-circle"></i> La matriz de turnos no está disponible en dispositivos móviles.
+            </div>
+        </div>
+
+        <!-- Tabla de Reglas -->
+        <div class="card full-width">
+            <h2><i class="fas fa-list"></i> Reglas Configuradas</h2>
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterRules('all')"><i class="fas fa-layer-group"></i> Todas</button>
+                <button class="filter-btn" onclick="filterRules('complex')"><i class="fas fa-exclamation-triangle"></i> Reglas complejas</button>
+                <button class="filter-btn" onclick="filterRules('ia')"><i class="fas fa-robot"></i> Con IA</button>
+                <button class="filter-btn" onclick="filterRules('conflict')"><i class="fas fa-exclamation-circle"></i> Posibles conflictos</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="rules-table" id="rulesTable">
+                    <thead>
+                        <tr>
+                            <th>Orden</th>
+                            <th>Descripción</th>
+                            <th>Canal</th>
+                            <th>Días</th>
+                            <th>Horario</th>
+                            <th>Usuarios</th>
+                            <th>IA Activa</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rulesTableBody">
+                        <!-- Se llenará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Programación Semanal -->
+        <div class="card full-width">
+            <h2><i class="fas fa-calendar-week"></i> Programación Semanal</h2>
+            <div class="schedule-grid" id="scheduleGrid">
+                <!-- Se llenará dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rulesData = [];
+        let parsedRules = [];
+        let channelChart = null;
+        let currentFilter = 'all';
+
+        // Datos de ejemplo mejorados con casos complejos
+        const sampleData = [
+            {
+                "indice": 1,
+                "tkComRegla": "41E21100-0F3D-4DA2-AC60-9175EF1A9479",
+                "orden": 1,
+                "descripcion": "Whatsapp MATUTINO",
+                "criterio": 1,
+                "configuracion": {
+                    "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                    "tkUsuarios": "U-27288B79-9B1F-42F9-BBC5-709431CE562A",
+                    "asignarInactivos": 1,
+                    "activarHorarios": 1,
+                    "diaCompleto": 0,
+                    "horaDesde": "08:00",
+                    "horaHasta": "12:00",
+                    "zonaHoraria": 72,
+                    "activarIA": 0,
+                    "tkCategoriaConversacion": "",
+                    "crearContacto": 0,
+                    "tkOrigen": "",
+                    "tkFase": "",
+                    "tkEtiquetas": "",
+                    "filtros": [],
+                    "dias": 1111100,
+                    "diferencia": -5,
+                    "idUsuarios": 192137,
+                    "fechaUltimaModificacion": "2025-07-09T13:55:10.933",
+                    "idUsuarioUltimaModificacion": 192137,
+                    "idUsuarioAsignado": 192137
+                },
+                "situacion": 1,
+                "canal": "ULTRAMAR Whatsapp",
+                "tkCanal": "047A9B68-7C13-43F8-8EA6-78A108212177",
+                "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                "fechaUltimaModificacion": "2025-07-09T13:55:10.933",
+                "asistente": "ULTRAMAR 2",
+                "totalReglas": 8,
+                "ejecutivoUltimaModificacion": "Zuri Barrientos",
+                "ejecutivoIniciales": "ZB"
+            },
+            {
+                "indice": 2,
+                "tkComRegla": "5BBF84BD-3589-4E20-9066-66BD47ED8CA8",
+                "orden": 2,
+                "descripcion": "Whatsapp INTERMEDIO",
+                "criterio": 1,
+                "configuracion": {
+                    "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                    "tkUsuarios": "U-4F3F586D-63DD-4825-8BA5-B55278A65783",
+                    "asignarInactivos": 0,
+                    "activarHorarios": 1,
+                    "diaCompleto": 0,
+                    "horaDesde": "12:00",
+                    "horaHasta": "16:00",
+                    "zonaHoraria": 72,
+                    "activarIA": 0,
+                    "tkCategoriaConversacion": "",
+                    "crearContacto": 0,
+                    "tkOrigen": "",
+                    "tkFase": "",
+                    "tkEtiquetas": "",
+                    "filtros": [],
+                    "dias": 1110000,
+                    "diferencia": -5,
+                    "idUsuarios": 192412,
+                    "fechaUltimaModificacion": "2025-07-14T10:01:23.403",
+                    "idUsuarioUltimaModificacion": 192137,
+                    "idUsuarioAsignado": 192412
+                },
+                "situacion": 1,
+                "canal": "ULTRAMAR Whatsapp",
+                "tkCanal": "047A9B68-7C13-43F8-8EA6-78A108212177",
+                "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                "fechaUltimaModificacion": "2025-07-14T10:01:23.403",
+                "asistente": "ULTRAMAR 2",
+                "totalReglas": 8,
+                "ejecutivoUltimaModificacion": "Zuri Barrientos",
+                "ejecutivoIniciales": "ZB"
+            },
+            {
+                "indice": 3,
+                "tkComRegla": "AD415C25-4D4A-4A7E-B388-2A4BEB634146",
+                "orden": 3,
+                "descripcion": "Whatsapp VESPERTINO",
+                "criterio": 1,
+                "configuracion": {
+                    "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                    "tkUsuarios": "U-27288B79-9B1F-42F9-BBC5-709431CE562A,U-4F3F586D-63DD-4825-8BA5-B55278A65783,U-61FF6AF9-8744-4F50-8A29-ADD0FC616CE2",
+                    "asignarInactivos": 0,
+                    "activarHorarios": 1,
+                    "diaCompleto": 0,
+                    "horaDesde": "16:00",
+                    "horaHasta": "20:00",
+                    "zonaHoraria": 72,
+                    "activarIA": 1,
+                    "tkCategoriaConversacion": "",
+                    "crearContacto": 0,
+                    "tkOrigen": "",
+                    "tkFase": "",
+                    "tkEtiquetas": "",
+                    "filtros": [],
+                    "dias": 1110000,
+                    "diferencia": -5,
+                    "idUsuarios": "192137,192412,192413",
+                    "fechaUltimaModificacion": "2025-07-14T10:01:38.433",
+                    "idUsuarioUltimaModificacion": 192137
+                },
+                "situacion": 1,
+                "canal": "ULTRAMAR Whatsapp",
+                "tkCanal": "047A9B68-7C13-43F8-8EA6-78A108212177",
+                "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                "fechaUltimaModificacion": "2025-07-14T10:01:38.433",
+                "asistente": "ULTRAMAR 2",
+                "totalReglas": 8,
+                "ejecutivoUltimaModificacion": "Zuri Barrientos",
+                "ejecutivoIniciales": "ZB"
+            },
+            {
+                "indice": 4,
+                "tkComRegla": "BD415C25-4D4A-4A7E-B388-2A4BEB634147",
+                "orden": 4,
+                "descripcion": "Whatsapp NOCTURNO",
+                "criterio": 1,
+                "configuracion": {
+                    "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                    "tkUsuarios": "U-27288B79-9B1F-42F9-BBC5-709431CE562A,U-4F3F586D-63DD-4825-8BA5-B55278A65783",
+                    "asignarInactivos": 0,
+                    "activarHorarios": 1,
+                    "diaCompleto": 0,
+                    "horaDesde": "22:00",
+                    "horaHasta": "02:00",
+                    "zonaHoraria": 72,
+                    "activarIA": 0,
+                    "tkCategoriaConversacion": "",
+                    "crearContacto": 0,
+                    "tkOrigen": "",
+                    "tkFase": "",
+                    "tkEtiquetas": "",
+                    "filtros": [],
+                    "dias": 1110000,
+                    "diferencia": -5,
+                    "idUsuarios": "192137,192412",
+                    "fechaUltimaModificacion": "2025-07-14T10:01:38.433",
+                    "idUsuarioUltimaModificacion": 192137
+                },
+                "situacion": 1,
+                "canal": "ULTRAMAR Whatsapp",
+                "tkCanal": "047A9B68-7C13-43F8-8EA6-78A108212177",
+                "tkAsistente": "DCA91EF7-737D-4DB1-881D-26E4DF81D4C4",
+                "fechaUltimaModificacion": "2025-07-14T10:01:38.433",
+                "asistente": "ULTRAMAR 2",
+                "totalReglas": 8,
+                "ejecutivoUltimaModificacion": "Zuri Barrientos",
+                "ejecutivoIniciales": "ZB"
+            }
+        ];
+
+        // Función para generar nombres de usuario genéricos
+        function generateUserNames(userIds) {
+            if (!userIds || userIds.length === 0) return [];
+            
+            return userIds.map((_, index) => `Usuario ${index + 1}`);
+        }
+
+        function parseDaysString(daysStr) {
+            if (typeof daysStr === 'number') {
+                daysStr = daysStr.toString();
+            }
+            
+            const daysNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            const activeDays = [];
+            
+            for (let i = 0; i < daysStr.length; i++) {
+                if (daysStr[i] === '1') {
+                    activeDays.push(daysNames[i]);
+                }
+            }
+            
+            return activeDays;
+        }
+
+        function parseTimeRange(horaDesde, horaHasta) {
+            const startTime = new Date(`2000-01-01 ${horaDesde}`);
+            const endTime = new Date(`2000-01-01 ${horaHasta}`);
+            
+            return {
+                start: horaDesde,
+                end: horaHasta,
+                crossesMidnight: startTime > endTime
+            };
+        }
+
+        function parseRulesData(data) {
+            const parsed = [];
+            
+            for (const rule of data) {
+                if (rule.configuracion && rule.configuracion.activarHorarios === 1) {
+                    const config = rule.configuracion;
+                    
+                    const days = parseDaysString(config.dias || '0000000');
+                    const timeRange = parseTimeRange(
+                        config.horaDesde || '00:00',
+                        config.horaHasta || '23:59'
+                    );
+                    
+                    let usuariosList = [];
+                    if (config.idUsuarios) {
+                        if (typeof config.idUsuarios === 'string') {
+                            usuariosList = config.idUsuarios.split(',');
+                        } else {
+                            usuariosList = [config.idUsuarios.toString()];
+                        }
+                    }
+                    
+                    // Generar nombres de usuario genéricos
+                    const usuariosNombres = generateUserNames(usuariosList);
+                    
+                    // Determinar si es una regla compleja (cruza medianoche con múltiples usuarios)
+                    const isComplex = timeRange.crossesMidnight && usuariosNombres.length > 1;
+                    
+                    parsed.push({
+                        orden: rule.orden,
+                        descripcion: rule.descripcion,
+                        canal: rule.canal,
+                        dias: days,
+                        horario: timeRange,
+                        usuarios: usuariosNombres,
+                        usuariosIds: usuariosList,
+                        iaActiva: config.activarIA === 1,
+                        isComplex: isComplex
+                    });
+                }
+            }
+            
+            return parsed.sort((a, b) => a.orden - b.orden);
+        }
+
+        function updateStats(rules) {
+            const totalReglas = rules.length;
+            const canales = [...new Set(rules.map(r => r.canal))];
+            
+            // Contar usuarios únicos
+            const usuarios = rules.reduce((acc, rule) => {
+                return acc + rule.usuarios.length;
+            }, 0);
+            
+            const reglasConMultiplesUsuarios = rules.filter(r => r.usuarios.length > 1).length;
+            const reglasConIA = rules.filter(r => r.iaActiva).length;
+            const reglasComplejas = rules.filter(r => r.isComplex).length;
+            
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${totalReglas}</div>
+                    <div class="stat-label"><i class="fas fa-list"></i> Reglas Activas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${canales.length}</div>
+                    <div class="stat-label"><i class="fas fa-broadcast-tower"></i> Canales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${usuarios}</div>
+                    <div class="stat-label"><i class="fas fa-users"></i> Usuarios Totales</div>
+                </div>
+                <div class="stat-card ia-card">
+                    <div class="stat-number">${reglasConIA}</div>
+                    <div class="stat-label"><i class="fas fa-robot"></i> Reglas con IA</div>
+                </div>
+                <div class="stat-card complex-card">
+                    <div class="stat-number">${reglasComplejas}</div>
+                    <div class="stat-label"><i class="fas fa-exclamation-triangle"></i> Reglas complejas</div>
+                </div>
+                <div class="stat-card warning-card">
+                    <div class="stat-number">${reglasConMultiplesUsuarios}</div>
+                    <div class="stat-label"><i class="fas fa-user-friends"></i> Múltiples usuarios</div>
+                </div>
+            `;
+        }
+
+        function filterRules(type) {
+            currentFilter = type;
+            
+            // Actualizar botones de filtro
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Actualizar tabla
+            updateRulesTable(parsedRules);
+        }
+
+        function updateRulesTable(rules) {
+            const tbody = document.getElementById('rulesTableBody');
+            tbody.innerHTML = '';
+            
+            rules.forEach(rule => {
+                // Aplicar filtro
+                if (currentFilter === 'complex' && !rule.isComplex) return;
+                if (currentFilter === 'ia' && !rule.iaActiva) return;
+                if (currentFilter === 'conflict' && !rule.isComplex) return;
+                
+                const row = document.createElement('tr');
+                
+                // Agregar clase para reglas complejas
+                if (rule.isComplex) {
+                    row.classList.add('conflict-highlight');
+                }
+                
+                row.innerHTML = `
+                    <td>${rule.orden}</td>
+                    <td><strong>${rule.descripcion}</strong></td>
+                    <td>${rule.canal}</td>
+                    <td>${rule.dias.join(', ')}</td>
+                    <td>${rule.horario.start} - ${rule.horario.end}</td>
+                    <td>${rule.usuarios.join(', ')}</td>
+                    <td>${rule.iaActiva ? '<span style="color: #4CAF50; font-weight: bold;"><i class="fas fa-check-circle"></i> Sí</span>' : '<span style="color: #c62828;"><i class="fas fa-times-circle"></i> No</span>'}</td>
+                    <td>
+                        ${rule.isComplex 
+                            ? '<span style="color: #9C27B0; font-weight: bold;"><i class="fas fa-exclamation-triangle"></i> Compleja</span>' 
+                            : (rule.usuarios.length > 1 
+                                ? '<span style="color: #ff6b6b;"><i class="fas fa-user-friends"></i> Múltiples</span>' 
+                                : '<span style="color: #4a6491;"><i class="fas fa-user"></i> Normal</span>')}
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateScheduleGrid(rules) {
+            const scheduleGrid = document.getElementById('scheduleGrid');
+            const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            
+            scheduleGrid.innerHTML = '';
+            
+            daysOfWeek.forEach(day => {
+                const dayColumn = document.createElement('div');
+                dayColumn.className = 'day-column';
+                
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = day;
+                dayColumn.appendChild(dayHeader);
+                
+                const dayRules = rules.filter(rule => rule.dias.includes(day));
+                
+                if (dayRules.length === 0) {
+                    const emptySlot = document.createElement('div');
+                    emptySlot.className = 'time-slot ia-active';
+                    emptySlot.innerHTML = `
+                        <div class="slot-description"><i class="fas fa-robot"></i> Asistencia IA</div>
+                        <div class="slot-ia">Atención por IA durante todo el día</div>
+                    `;
+                    dayColumn.appendChild(emptySlot);
+                } else {
+                    // Agregar IA en horarios no cubiertos
+                    const coveredHours = new Set();
+                    
+                    // Primero: recolectar todas las horas cubiertas
+                    dayRules.forEach(rule => {
+                        const start = parseInt(rule.horario.start.split(':')[0]);
+                        const end = parseInt(rule.horario.end.split(':')[0]);
+                        
+                        if (rule.horario.crossesMidnight) {
+                            for (let h = start; h < 24; h++) coveredHours.add(h);
+                            for (let h = 0; h < end; h++) coveredHours.add(h);
+                        } else {
+                            for (let h = start; h < end; h++) coveredHours.add(h);
+                        }
+                    });
+                    
+                    // Segundo: identificar huecos para IA
+                    const iaSlots = [];
+                    let currentStart = 0;
+                    
+                    for (let h = 0; h < 24; h++) {
+                        if (!coveredHours.has(h)) {
+                            if (iaSlots.length === 0 || iaSlots[iaSlots.length - 1].end !== h) {
+                                iaSlots.push({start: h, end: h + 1});
+                            } else {
+                                iaSlots[iaSlots.length - 1].end = h + 1;
+                            }
+                        }
+                    }
+                    
+                    // Tercero: crear slots de IA
+                    iaSlots.forEach(slot => {
+                        const iaSlot = document.createElement('div');
+                        iaSlot.className = 'time-slot ia-active';
+                        
+                        const startStr = slot.start.toString().padStart(2, '0') + ':00';
+                        const endStr = slot.end.toString().padStart(2, '0') + ':00';
+                        
+                        iaSlot.innerHTML = `
+                            <div class="slot-time"><i class="fas fa-clock"></i> ${startStr} - ${endStr}</div>
+                            <div class="slot-description"><i class="fas fa-robot"></i> Asistencia IA</div>
+                            <div class="slot-ia">Horario no cubierto por agentes</div>
+                        `;
+                        
+                        dayColumn.appendChild(iaSlot);
+                    });
+                    
+                    // Cuarto: agregar slots humanos
+                    dayRules.forEach(rule => {
+                        const slot = document.createElement('div');
+                        
+                        // Agregar clases según el tipo de regla
+                        slot.className = 'time-slot';
+                        if (rule.usuarios.length > 1) {
+                            slot.classList.add('multiple-users');
+                        }
+                        if (rule.horario.crossesMidnight) {
+                            slot.classList.add('crosses-midnight');
+                        }
+                        if (rule.iaActiva) {
+                            slot.classList.add('ia-active');
+                        }
+                        if (rule.isComplex) {
+                            slot.classList.add('complex-rule');
+                        }
+                        
+                        // Construir contenido del slot
+                        let slotHTML = `
+                            <div class="slot-time"><i class="fas fa-clock"></i> ${rule.horario.start} - ${rule.horario.end}</div>
+                            <div class="slot-description">${rule.descripcion}</div>
+                        `;
+                        
+                        // Advertencia para reglas complejas
+                        if (rule.isComplex) {
+                            slotHTML += `
+                                <div class="slot-warning">
+                                    <i class="fas fa-exclamation-triangle warning-icon"></i>
+                                    Esta regla cruza la medianoche con múltiples usuarios asignados
+                                </div>
+                            `;
+                        }
+                        
+                        slotHTML += `
+                            <div class="slot-users"><i class="fas fa-user"></i> ${rule.usuarios.join(', ')}</div>
+                            <div class="slot-channel"><i class="fas fa-comments"></i> ${rule.canal}</div>
+                        `;
+                        
+                        if (rule.iaActiva) {
+                            slotHTML += `<div class="slot-ia"><i class="fas fa-robot"></i> IA activa fuera de horario</div>`;
+                        }
+                        
+                        // Indicador para reglas complejas
+                        if (rule.isComplex) {
+                            slotHTML += `<div class="complex-indicator"><i class="fas fa-exclamation"></i></div>`;
+                        }
+                        
+                        slot.innerHTML = slotHTML;
+                        dayColumn.appendChild(slot);
+                    });
+                }
+                
+                scheduleGrid.appendChild(dayColumn);
+            });
+        }
+
+        function updateChannelChart(rules) {
+            const ctx = document.getElementById('channelChart').getContext('2d');
+            
+            // Destruir el gráfico anterior si existe
+            if (channelChart) {
+                channelChart.destroy();
+            }
+            
+            const channelCounts = {};
+            rules.forEach(rule => {
+                channelCounts[rule.canal] = (channelCounts[rule.canal] || 0) + 1;
+            });
+            
+            const labels = Object.keys(channelCounts);
+            const data = Object.values(channelCounts);
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#8AC926'];
+            
+            // Crear nuevo gráfico
+            channelChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Reglas por Canal de Comunicación',
+                            font: {
+                                size: 18
+                            }
+                        },
+                        tooltip: {
+                            bodyFont: {
+                                size: 14
+                            },
+                            titleFont: {
+                                size: 16
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Función para generar la matriz de turnos
+        function generateTimeMatrix(rules) {
+            const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+            const hours = Array.from({length: 24}, (_, i) => i); // [0,1,2,...,23]
+            
+            // Identificar canales con IA activa
+            const channelsWithIA = [...new Set(rules.filter(r => r.iaActiva).map(r => r.canal))];
+            
+            // Crear contenedor de la matriz
+            const container = document.createElement('div');
+            container.className = 'time-matrix';
+            
+            // Crear cabecera vacía para la esquina superior izquierda
+            const topLeft = document.createElement('div');
+            topLeft.className = 'matrix-header';
+            topLeft.innerHTML = '<i class="fas fa-clock"></i> Hora / Día';
+            container.appendChild(topLeft);
+            
+            // Crear cabeceras de días
+            days.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'matrix-header';
+                header.textContent = day;
+                container.appendChild(header);
+            });
+            
+            // Crear filas para cada hora
+            hours.forEach(hour => {
+                // Celda de hora
+                const timeCell = document.createElement('div');
+                timeCell.className = 'matrix-time';
+                timeCell.textContent = `${hour.toString().padStart(2, '0')}:00`;
+                container.appendChild(timeCell);
+                
+                // Celdas para cada día
+                days.forEach(day => {
+                    const cell = document.createElement('div');
+                    cell.className = 'matrix-cell';
+                    
+                    // Encontrar reglas activas para este día y hora
+                    const activeRules = rules.filter(rule => {
+                        if (!rule.dias.includes(day)) return false;
+                        
+                        const startHour = parseInt(rule.horario.start.split(':')[0]);
+                        const endHour = parseInt(rule.horario.end.split(':')[0]);
+                        
+                        if (rule.horario.crossesMidnight) {
+                            return hour >= startHour || hour < endHour;
+                        } else {
+                            return hour >= startHour && hour < endHour;
+                        }
+                    });
+                    
+                    if (activeRules.length === 0) {
+                        // Verificar si hay IA activa para este canal
+                        if (channelsWithIA.length > 0) {
+                            const iaRule = document.createElement('div');
+                            iaRule.className = 'matrix-rule ia-rule';
+                            
+                            const iaInfo = document.createElement('div');
+                            iaInfo.className = 'rule-ia';
+                            iaInfo.innerHTML = '<i class="fas fa-robot"></i> Asistente IA activo';
+                            
+                            iaRule.appendChild(iaInfo);
+                            cell.appendChild(iaRule);
+                        } else {
+                            const empty = document.createElement('div');
+                            empty.className = 'matrix-empty';
+                            empty.innerHTML = '<i class="fas fa-ban"></i> Sin turnos';
+                            cell.appendChild(empty);
+                        }
+                    } else {
+                        activeRules.forEach(rule => {
+                            const ruleElement = document.createElement('div');
+                            ruleElement.className = rule.iaActiva ? 'matrix-rule ia-rule' : 'matrix-rule';
+                            
+                            if (rule.isComplex) {
+                                ruleElement.classList.add('complex-rule');
+                            }
+                            
+                            const ruleTime = document.createElement('div');
+                            ruleTime.className = 'rule-time';
+                            ruleTime.innerHTML = `<i class="fas fa-clock"></i> ${rule.horario.start} - ${rule.horario.end}`;
+                            
+                            const ruleDesc = document.createElement('div');
+                            ruleDesc.className = 'rule-desc';
+                            ruleDesc.textContent = rule.descripcion;
+                            
+                            const ruleUsers = document.createElement('div');
+                            ruleUsers.className = 'rule-users';
+                            ruleUsers.innerHTML = `<i class="fas fa-user"></i> ${rule.usuarios.join(', ')}`;
+                            
+                            ruleElement.appendChild(ruleTime);
+                            ruleElement.appendChild(ruleDesc);
+                            ruleElement.appendChild(ruleUsers);
+                            
+                            if (rule.iaActiva) {
+                                const iaInfo = document.createElement('div');
+                                iaInfo.className = 'rule-ia';
+                                iaInfo.innerHTML = '<i class="fas fa-robot"></i> IA activa fuera de horario';
+                                ruleElement.appendChild(iaInfo);
+                            }
+                            
+                            if (rule.isComplex) {
+                                const warningInfo = document.createElement('div');
+                                warningInfo.className = 'rule-warning';
+                                warningInfo.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Cruza medianoche con múltiples usuarios';
+                                ruleElement.appendChild(warningInfo);
+                            }
+                            
+                            cell.appendChild(ruleElement);
+                        });
+                    }
+                    
+                    container.appendChild(cell);
+                });
+            });
+            
+            return container;
+        }
+
+        // Función para mostrar el estado del asistente IA
+        function updateIAStatus(rules) {
+            const container = document.getElementById('iaStatusContent');
+            
+            // Identificar reglas con IA activa
+            const iaRules = rules.filter(rule => rule.iaActiva);
+            const complexRules = rules.filter(rule => rule.isComplex);
+            
+            let content = `
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px;">
+                    <div style="flex: 1; min-width: 300px; background: #e8f5e9; border-radius: 12px; padding: 20px;">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <div style="background: #4CAF50; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-robot" style="font-size: 2rem; color: white;"></i>
+                            </div>
+                            <div>
+                                <h3 style="color: #4CAF50; margin-bottom: 5px;">Asistente IA</h3>
+                                <p>${iaRules.length} reglas con IA activa</p>
+                            </div>
+                        </div>
+                        <p>El asistente IA está configurado para atender en los siguientes canales cuando no haya agentes disponibles.</p>
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 300px; background: #f3e5f5; border-radius: 12px; padding: 20px;">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <div style="background: #9C27B0; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: white;"></i>
+                            </div>
+                            <div>
+                                <h3 style="color: #9C27B0; margin-bottom: 5px;">Reglas complejas</h3>
+                                <p>${complexRules.length} reglas que cruzan medianoche con múltiples usuarios</p>
+                            </div>
+                        </div>
+                        <p>Estas reglas requieren atención especial debido a su configuración compleja.</p>
+                    </div>
+                </div>
+            `;
+            
+            if (iaRules.length === 0) {
+                content += `
+                    <div style="text-align: center; padding: 20px; background: #ffebee; border-radius: 10px; margin-top: 20px;">
+                        <i class="fas fa-robot" style="font-size: 3rem; color: #c62828; margin-bottom: 15px;"></i>
+                        <h3 style="color: #c62828; margin-bottom: 10px;">Asistente IA Inactivo</h3>
+                        <p>No se encontraron reglas con asistente IA activado.</p>
+                    </div>
+                `;
+            } else {
+                content += `
+                    <h3 style="color: #4CAF50; margin-top: 25px; margin-bottom: 15px; border-bottom: 2px solid #4CAF50; padding-bottom: 10px;">
+                        <i class="fas fa-list"></i> Reglas con IA Activa
+                    </h3>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                `;
+                
+                iaRules.forEach(rule => {
+                    content += `
+                        <div style="background: #e8f5e9; border-radius: 10px; padding: 20px; border-left: 4px solid #4CAF50; position: relative;">
+                            <h4 style="margin-bottom: 10px; color: #1a2a6c;"><i class="fas fa-comments"></i> ${rule.canal}</h4>
+                            <p><strong>Horario:</strong> ${rule.horario.start} - ${rule.horario.end}</p>
+                            <p><strong>Días:</strong> ${rule.dias.join(', ')}</p>
+                            <p><strong>Usuarios:</strong> ${rule.usuarios.join(', ')}</p>
+                            <p><strong>Descripción:</strong> ${rule.descripcion}</p>
+                            ${rule.isComplex ? '<div style="position: absolute; top: 15px; right: 15px; background: #9C27B0; color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem;"><i class="fas fa-exclamation-triangle"></i> Compleja</div>' : ''}
+                        </div>
+                    `;
+                });
+                
+                content += `</div>`;
+            }
+            
+            if (complexRules.length > 0) {
+                content += `
+                    <h3 style="color: #9C27B0; margin-top: 40px; margin-bottom: 15px; border-bottom: 2px solid #9C27B0; padding-bottom: 10px;">
+                        <i class="fas fa-exclamation-triangle"></i> Reglas Complejas Detectadas
+                    </h3>
+                    
+                    <div class="warning-message">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <strong>Atención:</strong> Se han detectado ${complexRules.length} reglas que cruzan la medianoche y tienen múltiples usuarios asignados. 
+                            Esta configuración podría generar conflictos en la asignación de turnos. Por favor revise estas reglas cuidadosamente.
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                `;
+                
+                complexRules.forEach(rule => {
+                    content += `
+                        <div style="background: #f3e5f5; border-radius: 10px; padding: 20px; border-left: 4px solid #9C27B0; position: relative;">
+                            <h4 style="margin-bottom: 10px; color: #1a2a6c;"><i class="fas fa-comments"></i> ${rule.canal}</h4>
+                            <p><strong>Horario:</strong> ${rule.horario.start} - ${rule.horario.end} <span style="color: #d32f2f;">(cruza medianoche)</span></p>
+                            <p><strong>Días:</strong> ${rule.dias.join(', ')}</p>
+                            <p><strong>Usuarios:</strong> ${rule.usuarios.join(', ')}</p>
+                            <p><strong>Descripción:</strong> ${rule.descripcion}</p>
+                        </div>
+                    `;
+                });
+                
+                content += `</div>`;
+            }
+            
+            container.innerHTML = content;
+        }
+
+        function showMessage(message, type = 'success') {
+            const statusDiv = document.getElementById('loadStatus');
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                         type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle';
+            statusDiv.innerHTML = `<div class="${type}-message"><i class="fas ${icon}"></i> ${message}</div>`;
+            
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        function loadSampleData() {
+            try {
+                rulesData = sampleData;
+                parsedRules = parseRulesData(rulesData);
+                
+                updateStats(parsedRules);
+                updateRulesTable(parsedRules);
+                updateScheduleGrid(parsedRules);
+                updateChannelChart(parsedRules);
+                updateIAStatus(parsedRules);
+                
+                // Actualizar matriz de turnos
+                const matrixContainer = document.getElementById('timeMatrixContainer');
+                matrixContainer.innerHTML = '';
+                matrixContainer.appendChild(generateTimeMatrix(parsedRules));
+                
+                // Mostrar advertencia si hay reglas complejas
+                const complexRules = parsedRules.filter(r => r.isComplex);
+                if (complexRules.length > 0) {
+                    showMessage(`Se han detectado ${complexRules.length} reglas complejas que cruzan la medianoche con múltiples usuarios.`, 'warning');
+                } else {
+                    showMessage('Datos de ejemplo cargados correctamente', 'success');
+                }
+            } catch (error) {
+                showMessage('Error al cargar los datos de ejemplo: ' + error.message, 'error');
+            }
+        }
+
+        function loadJsonFile() {
+            const fileInput = document.getElementById('jsonFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showMessage('Por favor selecciona un archivo JSON', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    rulesData = jsonData;
+                    parsedRules = parseRulesData(rulesData);
+                    
+                    updateStats(parsedRules);
+                    updateRulesTable(parsedRules);
+                    updateScheduleGrid(parsedRules);
+                    updateChannelChart(parsedRules);
+                    updateIAStatus(parsedRules);
+                    
+                    // Actualizar matriz de turnos
+                    const matrixContainer = document.getElementById('timeMatrixContainer');
+                    matrixContainer.innerHTML = '';
+                    matrixContainer.appendChild(generateTimeMatrix(parsedRules));
+                    
+                    // Mostrar advertencia si hay reglas complejas
+                    const complexRules = parsedRules.filter(r => r.isComplex);
+                    if (complexRules.length > 0) {
+                        showMessage(`Se han detectado ${complexRules.length} reglas complejas que cruzan la medianoche con múltiples usuarios.`, 'warning');
+                    } else {
+                        showMessage(`Archivo JSON cargado correctamente. ${parsedRules.length} reglas activas encontradas.`, 'success');
+                    }
+                } catch (error) {
+                    showMessage('Error al parsear el archivo JSON: ' + error.message, 'error');
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        // Detectar tamaño de pantalla para mostrar/ocultar matriz
+        function handleResponsive() {
+            const matrixContainer = document.getElementById('timeMatrixContainer');
+            const notice = document.getElementById('matrixNotice');
+            
+            if (window.innerWidth < 768) {
+                matrixContainer.style.display = 'none';
+                notice.style.display = 'block';
+            } else {
+                matrixContainer.style.display = 'block';
+                notice.style.display = 'none';
+            }
+        }
+
+        // Cargar datos de ejemplo al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSampleData();
+            handleResponsive();
+            
+            // Escuchar cambios de tamaño de pantalla
+            window.addEventListener('resize', handleResponsive);
+            
+            // Limpiar gráfico al recargar/cerrar la página
+            window.addEventListener('beforeunload', () => {
+                if (channelChart) {
+                    channelChart.destroy();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
