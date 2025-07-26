@@ -202,3 +202,433 @@ server.listen(process.env.PORT || 0, () => {
 <p><strong>¡Genial!</strong> Nuestros servicios simulados ya están configurados y funcionando. En la siguiente sección, crearemos un nuevo servicio y obtendremos datos desde uno de los servicios existentes.</p>
 
 <p>Las secciones siguientes asumirán que los servicios aún están en ejecución y conectados a los puertos que especificamos en esta sección.</p>
+
+
+<br>
+<br>
+<br>
+
+<h2>Obtención de datos</h2>
+
+<p>
+Node.js incluye funcionalidad para realizar solicitudes HTTP mediante el módulo <code>http</code> del núcleo (y solicitudes HTTPS con el módulo <code>https</code>).
+Sin embargo, cuando se usan manejadores de rutas con <code>async/await</code>, los módulos del núcleo pueden volverse poco ergonómicos para hacer peticiones.
+</p>
+
+<p>
+Existe una amplia variedad de bibliotecas para realizar solicitudes HTTP en el ecosistema de Node.js.
+Desde Node v18, la API Web <code>fetch</code> está disponible como una función global en Node.
+Aunque su estado es <strong>experimental</strong>, la API está implementada según la especificación, por lo que no cambiará,
+y la implementación en Node-core usa <strong>Undici</strong>, un cliente HTTP enfocado en el rendimiento.
+</p>
+
+<p>
+Para nuestros propósitos está bien usarla, pero ten en cuenta que el estado experimental implica posibles errores y problemas.
+Para entornos de producción, hasta que <code>fetch</code> deje de ser experimental en Node, se recomienda usar
+<a href="https://www.npmjs.com/package/node-fetch" target="_blank">node-fetch</a> o
+<a href="https://www.npmjs.com/package/undici" target="_blank">undici</a>
+(usar Undici permite actualizaciones más rápidas).
+En este caso, usaremos la función <code>fetch</code> global integrada de Node disponible desde la versión 18 en adelante.
+</p>
+
+<h3>Configurando un nuevo servicio</h3>
+
+<pre><code>node -e "fs.mkdirSync('consuming-service')"
+cd consuming-service
+npm init fastify
+</code></pre>
+
+<p>
+Cuando termine el comando <code>npm init fastify</code> de generar el proyecto, instala las dependencias:
+</p>
+
+<pre><code>npm install</code></pre>
+
+<p>
+La carpeta <code>routes</code> generada por <code>npm init fastify</code> contiene un archivo <code>root.js</code> que configura la ruta raíz.
+Actualmente se ve así:
+</p>
+
+<pre><code class="language-js">'use strict'
+
+module.exports = async function (fastify, opts) {
+  fastify.get('/', async function (request, reply) {
+    return { root: true }
+  })
+}
+</code></pre>
+
+<p>
+Vamos a adaptarlo para que acepte un parámetro en la URL (un ID), de modo que una solicitud GET pueda especificar un ID,
+y luego lo use para obtener datos del servicio de bicicletas que configuramos en la sección anterior.
+</p>
+
+<p>Actualiza el archivo <code>routes/root.js</code> con lo siguiente:</p>
+
+<pre><code class="language-js">'use strict'
+
+const {
+  BICYCLE_SERVICE_PORT = 4040
+} = process.env
+
+const bicycleSrv = `http://localhost:${BICYCLE_SERVICE_PORT}`
+
+module.exports = async function (fastify, opts) {
+  fastify.get('/:id', async function (request, reply) {
+    const { id } = request.params
+    const res = await fetch(`${bicycleSrv}/${id}`)
+    const bicycle = res.json()
+    return bicycle
+  })
+}
+</code></pre>
+
+<p>
+En este caso, estamos asignando un puerto predeterminado a <code>BICYCLE_SERVICE_PORT</code>.
+Esto puede sobrescribirse mediante una variable de entorno con ese nombre,
+pero como hemos iniciado nuestro servicio de bicicletas en el puerto <code>4040</code>, no es necesario hacerlo aquí.
+</p>
+
+<h3>Iniciar el servicio consumidor</h3>
+
+<pre><code>npm run dev</code></pre>
+
+<p>Si navegamos a <code>http://localhost:3000/1</code>, deberíamos ver la siguiente respuesta:</p>
+
+<pre><code>{
+  "id": 1,
+  "color": "Red"
+}
+</code></pre>
+
+<p>
+El hecho de que estemos devolviendo un objeto desde una función <code>async</code> (el manejador de ruta)
+significa que Fastify también establecerá automáticamente el encabezado HTTP <code>Content-Type</code> como <code>application/json</code>.
+</p>
+
+<p>
+Ahora ya estamos obteniendo datos desde uno de nuestros servicios y devolviéndolos como respuesta.
+Hasta este punto simplemente estamos reenviando datos de un servicio a otro.
+En la siguiente sección, combinaremos los datos de ambos servicios simulados y, en la última sección,
+analizaremos cómo manejar errores, casos límite y problemas de disponibilidad.
+</p>
+
+
+<br>
+<br>
+<br>
+
+<h2>Combinando Datos</h2>
+
+<p>Ya hicimos una solicitud a un servicio, ahora extendamos el archivo <code>routes/root.js</code> para hacer una solicitud al otro servicio y luego enviar ambos conjuntos de datos combinados en un objeto.</p>
+
+<p>Modifica el contenido de <code>routes/root.js</code> de la siguiente forma:</p>
+
+<pre><code>'use strict'
+
+const {
+  BICYCLE_SERVICE_PORT = 4040, BRAND_SERVICE_PORT = 5050
+} = process.env
+
+const bicycleSrv = `http://localhost:${BICYCLE_SERVICE_PORT}`
+const brandSrv = `http://localhost:${BRAND_SERVICE_PORT}`
+
+module.exports = async function (fastify, opts) {
+  fastify.get('/:id', async function (request, reply) {
+    const { id } = request.params
+    const bicycle = await (await fetch(`${bicycleSrv}/${id}`)).json()
+    const brand = await (await fetch(`${brandSrv}/${id}`)).json()
+    return {
+      id: bicycle.id,
+      color: bicycle.color,
+      brand: brand.name,
+    }
+  })
+}
+</code></pre>
+
+<p>Ahora estamos haciendo una solicitud a ambos servicios y devolviendo un objeto que incluye datos de las respuestas de cada uno.</p>
+
+<p>Si navegamos a <code>http://localhost:3000/1</code>, deberíamos obtener la siguiente respuesta:</p>
+
+<pre><code>{"id":1,"color":"Red","brand":"Batavus"}</code></pre>
+
+<p>Observa que cuando construimos el objeto que se devuelve, el valor de la propiedad <code>id</code> se toma del objeto <code>bicycle</code> en lugar de <code>request.params.id</code>. Esto es una buena práctica para evitar ataques XSS reflejados. Siempre que sea posible, evita devolver directamente los datos que el usuario envía al servicio. Consulta <a href="https://owasp.org/www-community/attacks/xss/">OWASP: Pruebas para XSS reflejado</a> para más información. Hablaremos más de seguridad en los capítulos 9 y 10.</p>
+
+<p>Nota que hacemos primero una solicitud a un servicio, esperamos la respuesta, y luego hacemos la segunda. Esto es válido, pero en general es mejor hacer solicitudes concurrentes cuando sea posible.</p>
+
+<p>En nuestro caso específico, podríamos hacer ambas solicitudes concurrentemente así:</p>
+
+<pre><code>'use strict'
+
+const {
+  BICYCLE_SERVICE_PORT = 4040, BRAND_SERVICE_PORT = 5050
+} = process.env
+
+const bicycleSrv = `http://localhost:${BICYCLE_SERVICE_PORT}`
+const brandSrv = `http://localhost:${BRAND_SERVICE_PORT}`
+
+module.exports = async function (fastify, opts) {
+  fastify.get('/:id', async function (request, reply) {
+    const { id } = request.params
+    const noop = Function.prototype
+    const signal = AbortSignal.timeout(3000)
+
+    const bicycleReq = await fetch(`${bicycleSrv}/${id}`, { signal })
+    const brandReq = await fetch(`${brandSrv}/${id}`, { signal })
+
+    const bicycleJsonPromise = bicycleReq.json()
+    const brandJsonPromise = brandReq.json()
+
+    bicycleJsonPromise.catch(noop)
+    brandJsonPromise.catch(noop)
+
+    const results = await Promise.allSettled([bicycleJsonPromise, brandJsonPromise])
+
+    for (const { reason } of results) if (reason) throw reason
+
+    const [bicycle, brand] = results.map(({ value }) => value)
+
+    return {
+      id: bicycle.id,
+      color: bicycle.color,
+      brand: brand.name,
+    }
+  })
+}
+</code></pre>
+
+<p>El método <code>Promise.allSettled()</code> devuelve una promesa que se resuelve con un arreglo de objetos que representan el estado final de cada promesa. El ciclo <code>for...of</code> verifica si alguna promesa fue rechazada consultando la propiedad <code>reason</code>. Si hay error, se lanza.</p>
+
+<p>Este enfoque es aceptable para nuestro caso. En una aplicación más grande podrías decidir si devolver datos parciales o fallar más temprano según la estrategia adecuada.</p>
+
+<p><code>AbortSignal.timeout</code> crea una señal que se auto-aborta después de 3 segundos. Se pasa en las opciones de <code>fetch</code> para limitar el tiempo de espera.</p>
+
+<p>También usamos <code>catch(noop)</code> para evitar que Node.js lance advertencias (<code>PromiseHandledRejectionWarning</code>) porque el manejo del error se hace asincrónicamente con <code>Promise.allSettled</code>.</p>
+
+<p>Hacer solicitudes concurrentes no siempre es posible, ya que puede haber dependencia entre los datos de los servicios.</p>
+
+<p>Si navegamos nuevamente a <code>http://localhost:3000/1</code>, obtendremos el mismo resultado que en el caso secuencial:</p>
+
+<pre><code>{"id":1,"color":"Red","brand":"Batavus"}</code></pre>
+
+<p>Ahora hemos hecho exitosamente solicitudes a dos servicios <em>upstream</em> y respondido con los datos combinados de ambos.</p>
+
+<hr>
+<br>
+<br>
+<br>
+<hr>
+
+<h2>Gestionando Códigos de Estado (1)</h2>
+<p>Hasta ahora hemos implementado el camino feliz para obtener y combinar datos. Pero hay casos que aún no hemos manejado. Por ejemplo:</p>
+<ul>
+  <li>¿Qué hacemos si uno de los servicios responde con un código de estado 404?</li>
+  <li>¿Qué pasa si uno de los servicios no está disponible?</li>
+  <li>¿Qué pasa si cualquiera de los servicios responde con un código de estado que no sea 200?</li>
+  <li>¿Y qué hay de otros códigos de error 4XX o 5XX?</li>
+</ul>
+<p>Este es un conjunto limitado de preguntas, podríamos ir más lejos, pero es suficiente para comenzar. En esta sección vamos a asegurarnos de que cada uno de estos casos sea atendido en nuestra implementación.</p>
+<p>Comencemos verificando el código de estado de una ruta que sabemos que funciona correctamente ejecutando el siguiente comando:</p>
+<pre><code>node -e "http.get('http://localhost:3000/1', (res) =&gt; { console.log(res.statusCode); res.resume()})"
+</code></pre>
+<p>Esto debería mostrar: <strong>200</strong>.</p>
+<p>Intentemos ahora con <code>2</code> como ID:</p>
+<pre><code>node -e "http.get('http://localhost:3000/2', (res) =&gt; { console.log(res.statusCode); res.resume()})"
+</code></pre>
+<p>Esto mostrará: <strong>500</strong>. Esto significa que ocurrió un error en el manejador de la ruta y Fastify tomó el control respondiendo con un error 500 del servidor. Si iniciamos el servidor con <code>npm run dev</code>, este error se mostrará en la consola de forma similar a lo siguiente:</p>
+
+![Diagrama](./assets/2.png)
+
+<h2>Gestionando Códigos de Estado (1)</h2>
+
+<p>Podemos ver que el error ocurrido es un <code>SyntaxError</code>. Esto es generado por la función <code>fetch</code> incorporada porque uno de los servicios upstream respondió con un código de estado <code>404</code> y terminó la solicitud con un cuerpo de respuesta vacío. Está intentando analizar JSON en un buffer vacío.</p>
+
+<p>Pero nuestro servidor está recibiendo un <code>404</code> del servicio upstream y responde al cliente con un código de estado <code>500</code>. ¿Es ese el comportamiento que queremos? La respuesta depende mucho de la situación.</p>
+
+<p>Podríamos reenviar el código <code>404</code>, podríamos manejar el caso del cuerpo vacío y básicamente ignorar los datos de ese servicio pero devolver los datos del otro. La respuesta sobre cómo manejar esto depende de los requisitos funcionales y no funcionales del contexto de negocio para el que se está implementando el servicio.</p>
+
+<p>Manejaremos este escenario reenviando el <code>404</code>. En otras palabras, si cualquiera de los servicios upstream tiene un error <code>404</code>, enviaremos un <code>404</code> desde nuestro servicio.</p>
+
+<h3>routes/root.js</h3>
+
+<pre><code>'use strict'
+
+const {
+  BICYCLE_SERVICE_PORT = 4040, BRAND_SERVICE_PORT = 5050
+} = process.env
+
+const bicycleSrv = `http://localhost:${BICYCLE_SERVICE_PORT}`
+const brandSrv = `http://localhost:${BRAND_SERVICE_PORT}`
+
+module.exports = async function (fastify, opts) {
+  fastify.get('/:id', async function (request, reply) {
+    const { id } = request.params
+    const noop = Function.prototype
+    const signal = AbortSignal.timeout(3000)
+
+    const bicycleReq = await fetch(`${bicycleSrv}/${id}`, { signal })
+    const brandReq = await fetch(`${brandSrv}/${id}`, { signal })
+
+    if (bicycleReq.status === 404 || brandReq.status === 404) {
+      throw fastify.httpErrors.notFound()
+    }
+
+    const bicycleJsonPromise = bicycleReq.json()
+    const brandJsonPromise = brandReq.json()
+
+    bicycleJsonPromise.catch(noop)
+    brandJsonPromise.catch(noop)
+
+    const results = await Promise.allSettled([bicycleJsonPromise, brandJsonPromise])
+
+    for (const { reason } of results) {
+      if (reason) throw reason
+    }
+
+    const [bicycle, brand] = results.map(({ value }) => value)
+
+    return {
+      id: bicycle.id,
+      color: bicycle.color,
+      brand: brand.name,
+    }
+  })
+}
+</code></pre>
+
+<p>Si la propiedad <code>status</code> de cualquiera de las solicitudes es <code>404</code>, entonces lanzamos <code>fastify.httpErrors.notFound()</code> (proporcionado por <code>@fastify/sensible</code>, incluido en el boilerplate de <code>npm init fastify</code>).</p>
+
+<p>Cualquier otro error será lanzado y manejado por Fastify como de costumbre, por lo que si un servicio upstream responde con un código de estado que no sea 200-299 o 404, esto resultará en un error 500.</p>
+
+<h3>Verifica con:</h3>
+
+<pre><code>node -e "http.get('http://localhost:3000/2', (res) => console.log(res.statusCode))"
+</code></pre>
+
+<p>Esto debería mostrar <code>404</code>.</p>
+
+<h3>Con un ID inválido:</h3>
+
+<pre><code>node -e "http.get('http://localhost:3000/foo', (res) => console.log(res.statusCode))"
+</code></pre>
+
+<p>Esto mostrará: <code>500</code>.</p>
+
+<hr>
+<br>
+<br>
+<br>
+<hr>
+
+<h2>Gestión de Códigos de Estado (2)</h2>
+
+<p>Si revisamos los registros del servidor, veremos algo similar a lo siguiente:</p>
+
+<img src="https://d36ai2hkxl16us.cloudfront.net/course-uploads/e0df7fbf-a057-42af-8a1f-590912be5460/xxwkbrypospg-ud6n1obcc2j2-consuming-servicenpmrundev.png" alt="Registro del servidor" />
+
+<p>
+  Si el ID no es un número entero, los servicios upstream responden con un código de estado <strong>400 (Bad Request)</strong>. 
+  Vamos a manejar estos casos de la misma forma que los <strong>404</strong>. Podemos modificar el archivo <code>routes/root.js</code> así:
+</p>
+
+<pre><code class="language-js">'use strict'
+const {
+  BICYCLE_SERVICE_PORT = 4040, BRAND_SERVICE_PORT = 5050
+} = process.env
+
+const bicycleSrv = `http://localhost:${BICYCLE_SERVICE_PORT}`
+const brandSrv = `http://localhost:${BRAND_SERVICE_PORT}`
+
+module.exports = async function (fastify, opts) {
+  fastify.get('/:id', async function (request, reply) {
+    const { id } = request.params
+    const noop = Function.prototype
+    const signal = AbortSignal.timeout(3000)
+
+    const bicycleReq = await fetch(`${bicycleSrv}/${id}`, { signal })
+    const brandReq = await fetch(`${brandSrv}/${id}`, { signal })
+
+    if (bicycleReq.status === 404 || brandReq.status === 404)
+      throw fastify.httpErrors.notFound()
+
+    if (bicycleReq.status === 400 || brandReq.status === 400)
+      throw fastify.httpErrors.badRequest()
+
+    const bicycleJsonPromise = bicycleReq.json()
+    const brandJsonPromise = brandReq.json()
+
+    bicycleJsonPromise.catch(noop)
+    brandJsonPromise.catch(noop)
+
+    const results = await Promise.allSettled([
+      bicycleJsonPromise,
+      brandJsonPromise
+    ])
+
+    for (const { reason } of results)
+      if (reason) throw reason
+
+    const [bicycle, brand] = results.map(({ value }) => value)
+
+    return {
+      id: bicycle.id,
+      color: bicycle.color,
+      brand: brand.name,
+    }
+  })
+}
+</code></pre>
+
+<p>
+  Hemos añadido una verificación adicional para el código de estado: si cualquiera de los servicios upstream responde con un código <strong>400</strong>, 
+  lanzamos un error con <code>http.badRequest()</code>.
+</p>
+
+<p>
+  Ahora tanto los códigos de estado <strong>400</strong> como los <strong>404</strong> se reenvían al cliente. Todos los códigos de estado en los rangos 
+  <code>3xx</code>, <code>4xx</code> y <code>5xx</code> que provienen de los servicios upstream resultan en un error <strong>500</strong> en nuestro servicio consumidor.
+</p>
+
+<p>
+  Implementar el manejo de códigos en el rango <code>3xx</code>, que se relacionan con redirecciones, queda como un ejercicio para el lector.
+</p>
+
+<h3>¿Qué hacemos si uno o ambos servicios están caídos?</h3>
+
+<p>
+  En nuestro caso, probablemente deberíamos responder con un error <strong>500</strong>. Vamos a "matar" uno de los servicios que iniciamos en la sección de Servicios Simulados.
+  Una forma sencilla de hacerlo es entrar al terminal donde se está ejecutando el servicio y presionar <kbd>Ctrl + C</kbd>.
+</p>
+
+<p>Ahora ejecutemos el siguiente comando para hacer una petición GET que normalmente funciona:</p>
+
+<pre><code class="language-bash">
+node -e "http.get('http://localhost:3000/1', (res) => console.log(res.statusCode))"
+</code></pre>
+
+<p>
+  Esto provocará una ligera demora seguida de una salida: <code>500</code>.
+</p>
+
+<p>
+  Si revisamos los registros del servidor, deberíamos ver algo como esto:
+</p>
+
+<img src="https://d36ai2hkxl16us.cloudfront.net/course-uploads/e0df7fbf-a057-42af-8a1f-590912be5460/fxrv5y3c4e87-uxmopg77tjc5-consuming-servicenpmrundev1.png" alt="Error por servicio caído" />
+
+<p>
+  Podemos ver que el error tiene que ver con una <strong>conexión rechazada</strong>, y eso es porque el servicio está caído.
+</p>
+
+<hr />
+
+<p>
+  Ahora hemos cubierto lo básico sobre cómo manejar diversos escenarios en la comunicación entre servicios.
+</p>
+
+<p>
+  Hay más cosas a considerar, como la lógica de reintentos (<em>retry logic</em>), pero eso está fuera del alcance de esta sección. 
+  La idea de esta parte es fomentar una mentalidad que imagine los escenarios que pueden ocurrir con servicios externos y 
+  considere formas razonables de manejar esos casos.
+</p>
