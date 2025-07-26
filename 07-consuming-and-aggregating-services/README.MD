@@ -632,3 +632,30 @@ node -e "http.get('http://localhost:3000/1', (res) => console.log(res.statusCode
   La idea de esta parte es fomentar una mentalidad que imagine los escenarios que pueden ocurrir con servicios externos y 
   considere formas razonables de manejar esos casos.
 </p>
+
+<hr>
+<br>
+<br>
+<br>
+<br>
+<hr>
+
+<h1>Lab 7.1 - Implementar un Servicio de Agregación de Datos</h1>
+
+<h2>Consejos y Buenas Prácticas para el Laboratorio</h2>
+<p>Cuando trabajes en los ejercicios de laboratorio, ten en cuenta lo siguiente:</p>
+<ul>
+  <li>
+    Al acceder a URLs externas incrustadas en el documento PDF, utiliza siempre
+    <strong>clic derecho</strong> y selecciona <em>"abrir en una nueva pestaña"</em> o <em>"nueva ventana"</em>.
+    Si haces clic directamente, podrías cerrar la pestaña o ventana de tu curso por accidente.
+  </li>
+  <li>
+    Dependiendo del visor de PDF que utilices, si copias y pegas contenido desde el documento,
+    podrías perder el formato original. Por ejemplo, los <code>guiones bajos</code> pueden desaparecer
+    y ser reemplazados por espacios. Por lo tanto, puede que necesites editar manualmente el texto.
+    <strong>Siempre verifica que el texto pegado sea correcto.</strong>
+  </li>
+</ul>
+
+[Ver PDF aquí](./assets/3.pdf)
