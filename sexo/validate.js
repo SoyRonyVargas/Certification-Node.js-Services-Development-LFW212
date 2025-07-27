@@ -22,7 +22,12 @@ const post = promisify((url, cb) => {
 const HOST = 'http://localhost:3000'
 
 
-const server = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'])
+// const server = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'])
+const server = spawn('cmd', ['/c', 'npm start'], {
+    env: { ...process.env, PORT: port },
+    stdio: 'inherit'
+  })
+
 
 server.stderr.pipe(process.stderr)
 
