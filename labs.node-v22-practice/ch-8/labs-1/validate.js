@@ -76,11 +76,17 @@ async function system () {
     const base = 'http://localhost:' + srv.address().port
     return { base, close: srv.close.bind(srv) }
   }
-  const app = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'], {
-    cwd: __dirname,
-    stdio: ['ignore', 'ignore', 'inherit'],
-    env: { ...process.env, PORT }
+  // const app = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'], {
+  //   cwd: __dirname,
+  //   stdio: ['ignore', 'ignore', 'inherit'],
+  //   env: { ...process.env, PORT }
+  // })
+
+  const app = spawn('cmd', ['/c', 'npm start'], {
+    env: { ...process.env, PORT  },
+    stdio: 'inherit'
   })
+
   const srv = await server()
   function close () {
     srv.close()

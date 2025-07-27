@@ -119,3 +119,14 @@ Cuando accedas a URLs externas incrustadas en el documento PDF a continuación, 
 Dependiendo del visor de PDF que uses, si cortas y pegas texto del documento, podrías perder el formato original. Por ejemplo, los guiones bajos podrían desaparecer y ser reemplazados por espacios. Por ello, puede que necesites editar el texto manualmente. Siempre verifica que el texto pegado sea correcto.
 
 [Ver PDF aquí](./assets/lap-8.1.pdf)
+
+
+# Lab 8.2 - Implement a Full Proxying Service
+
+Lab Tips and Best Practices
+When working on the lab exercises, please keep the following in mind:
+
+When accessing external URLs embedded in the PDF document below, always use right-click and open in a new tab or window. Attempting to open the URL by directly clicking on it will close your course window/tab.
+Depending on your PDF viewer, if you are cutting and pasting from the document, you may lose the original formatting. For example, underscores might disappear and be replaced by spaces. Therefore, you may need to manually edit the text. Always double-check that the pasted text is correct.
+
+[Ver PDF aquí](./assets/lab-2.pdf)
