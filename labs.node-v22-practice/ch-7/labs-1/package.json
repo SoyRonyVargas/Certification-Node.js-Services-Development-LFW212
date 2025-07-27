@@ -1,10 +1,26 @@
 {
-  "name": "labs-1",
+  "name": "mkdir",
   "version": "1.0.0",
+  "description": "This project was bootstrapped with Fastify-CLI.",
+  "main": "app.js",
+  "directories": {
+    "test": "test"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "echo \"Error: start script not specified\" && exit 1"
+    "test": "node --test test/**/*.test.js",
+    "start": "fastify start -l info app.js && node boar-service && node-brand-service",
+    "dev": "fastify start -w -l info -P app.js",
+    "init2": "PORT=3000 BOAT_SERVICE_PORT=3333 BRAND_SERVICE_PORT=3334 npm start"
   },
   "keywords": [],
-  "license": "UNLICENSED"
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0",
+    "@fastify/autoload": "^6.0.0",
+    "@fastify/sensible": "^6.0.0",
+    "fastify-cli": "^7.4.0"
+  },
+  "devDependencies": {}
 }

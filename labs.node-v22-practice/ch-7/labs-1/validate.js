@@ -76,11 +76,17 @@ async function system ([p1 = 3000, p2 = 4000, p3 = 5000] = []) {
   const boatSrv = service(BOAT_SERVICE, BOAT_SERVICE_PORT)
   const BRAND_SERVICE_PORT = await getPort(p3)
   const brandSrv = service(BRAND_SERVICE, BRAND_SERVICE_PORT)
-  const app = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'], {
-    cwd: __dirname,
-    stdio: 'inherit',
-    env: { ...process.env, PORT, BOAT_SERVICE_PORT, BRAND_SERVICE_PORT }
+  // const app = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'], {
+  //   cwd: __dirname,
+  //   stdio: 'inherit',
+  //   env: { ...process.env, PORT, BOAT_SERVICE_PORT, BRAND_SERVICE_PORT }
+  // })
+
+  const app = spawn('cmd', ['/c', 'npm start'], {
+    env: { ...process.env, PORT, BOAT_SERVICE_PORT, BRAND_SERVICE_PORT },
+    stdio: 'inherit'
   })
+
   function close () {
     app.kill()
     boatSrv.kill()
@@ -301,7 +307,7 @@ function brandService () {
   
     res.end(JSON.stringify({
       id: id,
-      name: brands[(id - 231) % brands.length]
+      name: brands[(id - 231) % brands.length] ||  brands[(id) % brands.length] 
     }))
   })
   
