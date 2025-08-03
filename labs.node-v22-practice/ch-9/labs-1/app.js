@@ -18,9 +18,9 @@ router.get('/', (req, res) => {
 
 app.use(router)
 
-app.use( (req , res , next ) => {
-  res.status(400).send('Error')
-})
+// app.use( (req , res , next ) => {
+//   res.status(400).send('Error')
+// })
 
 app.listen(PORT, () => {
   console.log(`Express server listening on ${PORT}`)
