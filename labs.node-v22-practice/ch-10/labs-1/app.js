@@ -19,6 +19,29 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+const blackList = [
+  '111.34.55.211'
+]
+
+app.use(function(req, res, next) {
+
+  const ip = req.socket.ip || req.socket.remoteAddress || req.ip;
+
+  console.log('IP:', ip);
+  
+  const validatedIp = ip.split(':').pop();
+
+  if( blackList.includes(validatedIp) ) 
+  {
+    const error = new Error('Forbiden')
+    error.status = 403
+    return next(error)
+  }
+
+  next();
+
+})
+
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
