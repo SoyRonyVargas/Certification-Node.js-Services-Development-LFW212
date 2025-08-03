@@ -1,14 +1,21 @@
 'use strict'
 const { promisify } = require('util')
-const { bicycle } = require('../model')
+const { bicycle } = require('../../model')
 const { uid } = bicycle
 const read = promisify(bicycle.read)
 const create = promisify(bicycle.create)
 const update = promisify(bicycle.update)
 const del = promisify(bicycle.del)
 
+const idSchema = { type: 'integer' }
+
 const schema = {
   schema: {
+    response: {
+      201: {
+        id: idSchema
+      }
+    },
     body: {
       type: 'object',
       required: ['data'],
@@ -28,6 +35,14 @@ const schema = {
   }
 }
 
+const paramsSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'integer' }
+  }
+}
+
 module.exports = async (fastify, opts) => {
   const { notFound } = fastify.httpErrors
 
@@ -39,7 +54,7 @@ module.exports = async (fastify, opts) => {
     return { id }
   })
 
-  fastify.post('/:id/update', async (request, reply) => {
+  fastify.post('/:id/update', { schema: { body: schema.schema.body , params: paramsSchema }  } , async (request, reply) => {
     const { id } = request.params
     const { data } = request.body
     try {
@@ -51,7 +66,7 @@ module.exports = async (fastify, opts) => {
     }
   })
 
-  fastify.get('/:id', async (request, reply) => {
+  fastify.get('/:id', { schema: { params: paramsSchema } }, async (request, reply) => {
     const { id } = request.params
     try {
       return await read(id)
@@ -61,7 +76,7 @@ module.exports = async (fastify, opts) => {
     }
   })
 
-  fastify.put('/:id', async (request, reply) => {
+  fastify.put('/:id', { schema: { body: schema.schema.body , params: paramsSchema } } , async (request, reply) => {
     const { id } = request.params
     const { data } = request.body
     try {
@@ -78,7 +93,7 @@ module.exports = async (fastify, opts) => {
     }
   })
 
-  fastify.delete('/:id', async (request, reply) => {
+  fastify.delete('/:id', { schema: { params: paramsSchema } }, async (request, reply) => {
     const { id } = request.params
     try {
       await del(id)

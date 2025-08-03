@@ -597,3 +597,608 @@ module.exports = async (fastify, opts) => {
 <a href="https://fastify.dev/docs/v5.1.x/Reference/Validation-and-Serialization/#adding-a-shared-schema" target="_blank" rel="noopener noreferrer">
 Fastify - Validación y Serialización
 </a></p>
+
+
+<br>
+<br>
+<br>
+<br>
+
+<h1>Validación de Rutas con Fastify (6)</h1>
+
+<p>Sin embargo, también podemos simplemente colocar el objeto del esquema (<code>schema</code>) en una variable y luego hacer referencia a ella en las rutas donde se aplica. Podemos hacer esto modificando el archivo <code>routes/bicycle/index.js</code> de la siguiente forma:</p>
+
+<pre><code class="language-js">
+'use strict'
+const { promisify } = require('util')
+const { bicycle } = require('../../model')
+const { uid } = bicycle
+const read = promisify(bicycle.read)
+const create = promisify(bicycle.create)
+const update = promisify(bicycle.update)
+const del = promisify(bicycle.del)
+
+module.exports = async (fastify, opts) => {
+  const { notFound } = fastify.httpErrors
+
+  const bodySchema = {
+    type: 'object',
+    required: ['data'],
+    additionalProperties: false,
+    properties: {
+      data: {
+        type: 'object',
+        required: ['brand', 'color'],
+        additionalProperties: false,
+        properties: {
+          brand: {type: 'string'},
+          color: {type: 'string'}
+        }
+      }
+    }
+  }
+
+  fastify.post('/', {
+    schema: {
+      body: bodySchema
+    }
+  }, async (request, reply) => {
+    const { data } = request.body
+    const id = uid()
+    await create(id, data)
+    reply.code(201)
+    return { id }
+  })
+
+  fastify.post('/:id/update', {
+    schema: {
+      body: bodySchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    const { data } = request.body
+    try {
+      await update(id, data)
+      reply.code(204)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+
+  fastify.get('/:id', async (request, reply) => {
+    const { id } = request.params
+    try {
+      return await read(id)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+
+  fastify.put('/:id', {
+    schema: {
+      body: bodySchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    const { data } = request.body
+    try {
+      await create(id, data)
+      reply.code(201)
+      return { }
+    } catch (err) {
+      if (err.message === 'resource exists') {
+        await update(id, data)
+        reply.code(204)
+      } else {
+        throw err
+      }
+    }
+  })
+
+  fastify.delete('/:id', async (request, reply) => {
+    const { id } = request.params
+    try {
+      await del(id)
+      reply.code(204)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+}
+</code></pre>
+
+<p>Este ejemplo muestra cómo definir una variable <code>bodySchema</code> que contiene el esquema de validación para el cuerpo (<code>body</code>) de las peticiones. Luego, esta misma variable se reutiliza en varias rutas: <code>POST /</code>, <code>POST /:id/update</code> y <code>PUT /:id</code>.</p>
+
+<p>Al centralizar el esquema en una sola variable, evitamos duplicar código y mantenemos el esquema consistente entre las rutas que deben validar los mismos datos.</p>
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+<h2>Validación de rutas con Fastify (7)</h2>
+
+<p>Estas rutas también tienen otra entrada que aún no hemos considerado: el parámetro de ruta <code>id</code>. Podemos aplicar validación a los parámetros de ruta usando la opción <code>schema.params</code>. Los métodos en <code>models.js</code> esperan que el ID sea un número entero.</p>
+
+<p>Dado que el parámetro <code>id</code> se especifica en la segunda ruta <code>POST</code>, así como en las rutas <code>DELETE</code>, <code>GET</code> y <code>PUT</code>, vamos a crear un esquema para los parámetros debajo del <code>bodySchema</code> que acabamos de definir. Debería verse así:</p>
+
+<pre><code class="language-js">const paramsSchema = {
+  id: {
+    type: 'integer'
+  }
+}
+</code></pre>
+
+<p>Ahora podemos usarlo en cada ruta que tenga un marcador <code>:id</code> en la URL. Nuestro archivo <code>routes/bicycle/index.js</code> se vería de la siguiente manera:</p>
+
+<pre><code class="language-js">'use strict'
+const { promisify } = require('util')
+const { bicycle } = require('../../model')
+const { uid } = bicycle
+const read = promisify(bicycle.read)
+const create = promisify(bicycle.create)
+const update = promisify(bicycle.update)
+const del = promisify(bicycle.del)
+
+module.exports = async (fastify, opts) => {
+  const { notFound } = fastify.httpErrors
+
+  const bodySchema = {
+    type: 'object',
+    required: ['data'],
+    additionalProperties: false,
+    properties: {
+      data: {
+        type: 'object',
+        required: ['brand', 'color'],
+        additionalProperties: false,
+        properties: {
+          brand: {type: 'string'},
+          color: {type: 'string'}
+        }
+      }
+    }
+  }
+
+  const paramsSchema = {
+    id: {
+      type: 'integer'
+    }
+  }
+
+  fastify.post('/', {
+    schema: {
+      body: bodySchema
+    }
+  }, async (request, reply) => {
+    const { data } = request.body
+    const id = uid()
+    await create(id, data)
+    reply.code(201)
+    return { id }
+  })
+
+  fastify.post('/:id/update', {
+    schema: {
+      body: bodySchema,
+      params: paramsSchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    const { data } = request.body
+    try {
+      await update(id, data)
+      reply.code(204)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+
+  fastify.get('/:id', {
+    schema: {
+      params: paramsSchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    try {
+      return await read(id)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+
+  fastify.put('/:id', {
+    schema: {
+      body: bodySchema,
+      params: paramsSchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    const { data } = request.body
+    try {
+      await create(id, data)
+      reply.code(201)
+      return { }
+    } catch (err) {
+      if (err.message === 'resource exists') {
+        await update(id, data)
+        reply.code(204)
+      } else {
+        throw err
+      }
+    }
+  })
+
+  fastify.delete('/:id', {
+    schema: {
+      params: paramsSchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    try {
+      await del(id)
+      reply.code(204)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+}
+</code></pre>
+
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+<h1>Validación de rutas con Fastify (8)</h1>
+
+<p>
+Antes de este cambio, hacer una solicitud <code>GET</code> o <code>DELETE</code> a <code>http://localhost:3000/something</code> 
+o una solicitud <code>POST</code> a <code>http://localhost:3000/update/something</code> resultaba en una respuesta 
+<code>404 Not Found</code>, lo cual es técnicamente válido porque tal entrada (esperemos) no existiría. 
+Sin embargo, ahora una solicitud <code>GET</code> o <code>DELETE</code> a esa ruta, o una <code>POST</code> a 
+<code>/update/something</code> dará como resultado una respuesta <code>400 Bad Request</code>, porque "something" no es 
+un número entero. Más importante aún, una solicitud <code>PUT</code> a esa misma ruta también resultará en un 
+<code>400 Bad Request</code> en lugar de intentar almacenar datos con un ID no entero.
+</p>
+
+<p>
+Validar el parámetro de ruta protege contra errores potenciales y ahorra trabajo adicional en el mecanismo de almacenamiento.
+</p>
+
+<h2>Validación de respuestas</h2>
+
+<p>
+Finalmente, hay una cosa más que podemos validar: la respuesta. Al principio, esto puede parecer algo extraño de hacer. 
+Sin embargo, en muchas arquitecturas empresariales, las bases de datos pueden ser compartidas, lo que significa que múltiples 
+servicios pueden leer y escribir en el mismo almacenamiento. Esto implica que, al recuperar datos desde una fuente remota, 
+no podemos confiar totalmente en esos datos incluso si son internos. ¿Y si otro servicio no validó los datos de entrada? 
+No queremos enviar un estado malicioso al usuario.
+</p>
+
+<p>
+Solo hay dos casos en los que devolvemos algún tipo de estado. Uno es en la primera ruta <code>POST</code>, donde enviamos 
+de vuelta un nuevo ID. El otro es en la ruta <code>GET</code>, donde devolvemos el resultado de una lectura.
+</p>
+
+<h3>Validando la respuesta del POST</h3>
+
+<p>
+En la primera ruta <code>POST</code>, el ID devuelto tiene las mismas reglas que el parámetro de ruta <code>id</code>: 
+debe ser un número entero. Podemos reutilizar el esquema separándolo así:
+</p>
+
+<pre><code class="language-js">const idSchema = { type: 'integer' }
+const paramsSchema = { id: idSchema }</code></pre>
+
+<p>Luego, la ruta POST se modifica así:</p>
+
+<pre><code class="language-js">fastify.post('/', {
+  schema: {
+    body: bodySchema,
+    response: {
+      201: {
+        id: idSchema
+      }
+    }
+  }
+}, async (request, reply) => {
+  const { data } = request.body
+  const id = uid()
+  await create(id, data)
+  reply.code(201)
+  return { id }
+})</code></pre>
+
+<p>
+La opción <code>schema.response</code> difiere ligeramente de otras, ya que también se debe especificar el código de respuesta. 
+Esto es porque una ruta puede responder con distintos códigos, cada uno con diferente estructura. Si quisiéramos validar 
+todas las respuestas del 200 al 299, podríamos usar una clave <code>2xx</code>. En este caso, como solo respondemos con 
+<code>201</code>, usamos solo esa clave.
+</p>
+
+<h3>Validando la respuesta del GET</h3>
+
+<p>
+El método <code>read</code> responde con objetos que contienen claves <code>brand</code> y <code>color</code>. 
+Podemos reutilizar esa estructura como <code>dataSchema</code>:
+</p>
+
+<pre><code class="language-js">const dataSchema = {
+  type: 'object',
+  required: ['brand', 'color'],
+  additionalProperties: false,
+  properties: {
+    brand: {type: 'string'},
+    color: {type: 'string'}
+  }
+}
+
+const bodySchema = {
+  type: 'object',
+  required: ['data'],
+  additionalProperties: false,
+  properties: {
+    data: dataSchema
+  }
+}</code></pre>
+
+<p>Y luego actualizamos la ruta <code>GET</code> así:</p>
+
+<pre><code class="language-js">fastify.get('/:id', {
+  schema: {
+    params: paramsSchema,
+    response: {
+      200: dataSchema
+    }
+  }
+}, async (request, reply) => {
+  const { id } = request.params
+  try {
+    return await read(id)
+  } catch (err) {
+    if (err.message === 'not found') throw notFound()
+    throw err
+  }
+})</code></pre>
+
+<p>
+Dado que esta ruta responde con el código 200 OK por defecto, se usa la clave <code>200</code> en <code>schema.response</code> 
+para aplicar la validación correspondiente, usando el esquema <code>dataSchema</code>.
+</p>
+
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+<h2>Validación de rutas con Fastify (9)</h2>
+
+<p>Ahora podemos estar seguros de que cualquier dato recuperado cumple con nuestras reglas de validación antes de enviarlo al usuario. El archivo <code>routes/bicycle/index.js</code> ahora debería verse así:</p>
+
+<pre><code class="language-js">
+'use strict'
+const { promisify } = require('util')
+const { bicycle } = require('../../model')
+const { uid } = bicycle
+const read = promisify(bicycle.read)
+const create = promisify(bicycle.create)
+const update = promisify(bicycle.update)
+const del = promisify(bicycle.del)
+
+module.exports = async (fastify, opts) => {
+  const { notFound } = fastify.httpErrors
+
+  const dataSchema = {
+    type: 'object',
+    required: ['brand', 'color'],
+    additionalProperties: false,
+    properties: {
+      brand: { type: 'string' },
+      color: { type: 'string' }
+    }
+  }
+
+  const bodySchema = {
+    type: 'object',
+    required: ['data'],
+    additionalProperties: false,
+    properties: {
+      data: dataSchema
+    }
+  }
+
+  const idSchema = { type: 'integer' }
+  const paramsSchema = { id: idSchema }
+
+  fastify.post('/', {
+    schema: {
+      body: bodySchema,
+      response: {
+        201: {
+          id: idSchema
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { data } = request.body
+    const id = uid()
+    await create(id, data)
+    reply.code(201)
+    return { id }
+  })
+
+  fastify.post('/:id/update', {
+    schema: {
+      body: bodySchema,
+      params: paramsSchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    const { data } = request.body
+    try {
+      await update(id, data)
+      reply.code(204)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+
+  fastify.get('/:id', {
+    schema: {
+      params: paramsSchema,
+      response: {
+        200: dataSchema
+      }
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    try {
+      return await read(id)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+
+  fastify.put('/:id', {
+    schema: {
+      body: bodySchema,
+      params: paramsSchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    const { data } = request.body
+    try {
+      await create(id, data)
+      reply.code(201)
+      return {}
+    } catch (err) {
+      if (err.message === 'resource exists') {
+        await update(id, data)
+        reply.code(204)
+      } else {
+        throw err
+      }
+    }
+  })
+
+  fastify.delete('/:id', {
+    schema: {
+      params: paramsSchema
+    }
+  }, async (request, reply) => {
+    const { id } = request.params
+    try {
+      await del(id)
+      reply.code(204)
+    } catch (err) {
+      if (err.message === 'not found') throw notFound()
+      throw err
+    }
+  })
+}
+</code></pre>
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+
+<h2>Validación de rutas con Fastify (10)</h2>
+
+<p>Podemos iniciar nuestro servidor con el archivo actualizado <code>routes/bicycle.js</code> usando <code>npm start</code>, y luego, en otra terminal, ejecutar algunos comandos para verificar que funciona como se espera.</p>
+
+<p>La siguiente solicitud POST debería funcionar correctamente:</p>
+
+<pre><code>node -e "http.request('http://localhost:3000/bicycle', { method: 'post', headers: {'content-type': 'application/json'}}, (res) => res.setEncoding('utf8').once('data', console.log.bind(null, res.statusCode))).end(JSON.stringify({data: {brand: 'Gazelle', color: 'red'}}))"</code></pre>
+
+<p>La salida de este comando será:</p>
+
+<pre><code>201 {"id": "3"}</code></pre>
+
+<p>La carga útil fue <code>{"data":{"brand":"Gazelle","color":"red"}}</code>. Si cambiamos la carga útil a <code>{"data":{"brand":"Gazelle","colors":"red"}}</code>, obtendremos un error 400 Bad Request:</p>
+
+<pre><code>node -e "http.request('http://localhost:3000/bicycle', { method: 'post', headers: {'content-type': 'application/json'}}, (res) => res.setEncoding('utf8').once('data', console.log.bind(null, res.statusCode))).end(JSON.stringify({data: {brand: 'Gazelle', colors: 'red'}}))"</code></pre>
+
+<p>La salida será:</p>
+
+<pre><code>400 {"type":"error","status":400,"message":"Bad Request","stack": "..."}</code></pre>
+
+<p>Si se incluyen propiedades adicionales en la carga útil, serán eliminadas. Ejemplo:</p>
+
+<pre><code>{"data":{"brand":"Gazelle","color":"red", "extra": "will be stripped"}}</code></pre>
+
+<p>Comando:</p>
+
+<pre><code>node -e "http.request('http://localhost:3000/bicycle', { method: 'post', headers: {'content-type': 'application/json'}}, (res) => res.setEncoding('utf8').once('data', console.log.bind(null, res.statusCode))).end(JSON.stringify({data: {brand: 'Gazelle', color: 'red', extra: 'will be stripped'}}))"</code></pre>
+
+<p>Resultado:</p>
+
+<pre><code>201 {"id":"4"}</code></pre>
+
+<p>Al hacer un <code>GET</code> a <code>http://localhost:3000/bicycle/4</code>:</p>
+
+<pre><code>node -e "http.get('http://localhost:3000/bicycle/4', (res) => res.setEncoding('utf8').once('data', console.log))"</code></pre>
+
+<p>La salida será:</p>
+
+<pre><code>{"brand":"Gazelle","color":"red"}</code></pre>
+
+<p>La propiedad <code>extra</code> fue descartada debido a la función de validación que solo conservó las claves permitidas.</p>
+
+<h3>Validación de respuestas</h3>
+
+<p>Una invalidación de <code>schema.body</code> produce un error 400. Pero si se invalida un esquema de respuesta, produce un error 500. Podemos probarlo modificando la ruta GET:</p>
+
+<pre><code>fastify.get('/:id', {
+  schema: {
+    params: paramsSchema,
+    response: {
+      200: dataSchema
+    }
+  }
+}, async (request, reply) => {
+  const { id } = request.params
+  try {
+    return {ka: 'boom'}
+  } catch (err) {
+    if (err.message === 'not found') throw notFound()
+    throw err
+  }
+})</code></pre>
+
+<p>Esto causará un error 500 al visitar <code>http://localhost:3000/bicycle/1</code> porque la respuesta no cumple con el esquema.</p>
+
+<h3>Uso de Fluent-Schema</h3>
+
+<p>Existe una biblioteca llamada <a href="https://github.com/fastify/fluent-schema">fluent-schema</a> que permite crear objetos JSONSchema con una API fluida. Ejemplo:</p>
+
+<pre><code>S.object()
+ .prop('brand', S.string().required())
+ .prop('color', S.string().required())
+ .additionalProperties(false)</code></pre>
+
+<h3>Pruebas automatizadas</h3>
+
+<p>Otra buena práctica para protegerse contra entradas maliciosas es escribir pruebas rigurosas. Esto no se trata en esta capacitación ni es parte de la certificación, pero sí forma parte de la certificación de desarrollador de aplicaciones JavaScript.</p>
+
+<p>Para más información sobre pruebas en Fastify, visita:</p>
+
+<p><a href="https://fastify.dev/docs/v5.1.x/Guides/Testing/">https://fastify.dev/docs/v5.1.x/Guides/Testing/</a></p>
+
+<p>En esta sección, aplicamos validación usando las recomendaciones y APIs de Fastify. En la siguiente sección haremos lo mismo para el servicio Express creado en el Capítulo 6, siguiendo enfoques comunes en proyectos Express legacy.</p>
