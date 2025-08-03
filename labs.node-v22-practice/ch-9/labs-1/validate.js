@@ -55,10 +55,14 @@ const up = promisify(function retry (port, cb) {
 
 async function system (p1 = 3000) {
   const PORT = await getPort(p1)
-  const app = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'], {
-    cwd: __dirname,
-    stdio: 'inherit',
-    env: { ...process.env, PORT }
+  // const app = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['start'], {
+  //   cwd: __dirname,
+  //   stdio: 'inherit',
+  //   env: { ...process.env, PORT }
+  // })
+  const app = spawn('cmd', ['/c', 'npm start'], {
+    env: { ...process.env, PORT  },
+    stdio: 'inherit'
   })
   function close () {
     app.kill()
